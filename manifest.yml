@@ -1,0 +1,6 @@
+applications:
+  - name: discord-reversi
+    random-route: true
+    memory: 256M
+    timeout: 600
+    health-check-type: process
