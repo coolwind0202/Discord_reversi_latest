@@ -96,10 +96,36 @@ class _Board(object):
                 
         return grid_and_stones_dict
     
-    def stones_will_not_returned(self):
+    def stones_will_not_returned(self,bot_team):
         """
         盤面の確定石数を返す。
+        ただし、正確な確定石数ではなく、端のみに着目したものである。
+        4隅をタプルとして定義する。
+        4隅について、その石が自分の石なら各方向に対し走査する。自分の石だったら石数に追加。そうでなければ走査打ち切り。
         """
+        
+        FOUR_CORNER_AND_COURSES = {(0,0): ((0,1),(1,0)), (7,0): ((-1,0),(0,-1)), (0,7): ((0,-1),(1,0)), (7,7): ((0,-1),(-1,0))}
+        
+        stone_count = 0 # 確定石カウント
+        
+        for CORNER in FOUR_CORNER_AND_COURSES:
+            if self[CORNER] == bot_team:
+                # 確定石なので、更に走査する
+                stone_count += 1
+                
+                for i in range(8):
+                    a = FOUR_CORNER_AND_COURSES[0]
+                    b = FOUR_CORNER_AND_COURSES[1]
+                    
+                    a_grid = (CORNER[0] + a[0] * i, CORNER[1] + a[1] * i)
+                    b_grid = (CORNER[0] + b[0] * i, CORNER[1] + b[1] * i)
+                    
+                    if self[a_grid] == bot_team:
+                        stone_count += 1
+                    elif self[b_grid] == bot_team:
+                        stone_count += 1
+                    else:
+                        break        
     
     def eval_(self):
         """
@@ -107,44 +133,41 @@ class _Board(object):
         """
         pass
         
-    
-    @property
-    def decision(self,depth,team):
+    def decision(self,base_depth,bot_team,depth,team):
         """
-        この関数が呼び出されるのはbotの思考時。
-        呼び出す際には、その時点の盤面(_Board インスタンス)を与える。
-        
-        与えられた _Board インスタンス の can_put_grid_and_returns() メソッドを実行。
-        これの戻り値（置ける場所がキー、置いた結果が）に対して以下の処理を行う。
-        
-        1. board 引数をコピー。
-        2. コピーした board_2 に、戻り値を利用してputメソッドを実行。
-        3. その結果をdescisionメソッドに渡す。このときteam引数は反転し、depth引数は1引くこと。
-        4. depth引数が0になった、あるいは can_put_grid_and_returns() の戻り値が空になったら、
-           処理をやめてその盤面を評価関数に渡す。評価関数の戻り値を返す。
-        5. 戻り値が返ってきたら、それをリストに追加する。
-        6. リストの中でもっとも評価が良かったものを返す。
-           （min-max法に基づき、teamが敵の場合もっとも悪いものを返す。）
-        7. 最後まで処理が戻ってきたら、座標と評価結果を辞書に格納。
-        8. その中でもっとも評価が良かった座標を思考結果として返す。
-       
+        この関数が呼び出されるのはbotの思考時。       
         """
         
         if depth == 0:
             return self.eval_()
         
         tmp = self.can_put_grid_and_returns(team)
-        
         if not tmp:
             return self.eval_()
         
+        if base_depth == depth:
+            # 初回の呼び出しでの処理。
+            
+            eval_dict = [] # 最初の呼び出しでは座標を保存しておくため。
+            
+            for grid in tmp:
+                self_copy = copy.deepcopy(self)
+                eval_dict[tmp] = selp_copy.decision(depth - 1, not team)
+                
+            sorted_tuple = sorted(eval_dict.items(), lambda items: items[1] * -1)
+            return sorted_tuple[0][0]
+                
         eval_list = []
         
         for grid in tmp:
             self_copy = copy.deepcopy(self)
             eval_list.append(self_copy.decision(depth - 1,not team))
-        
-        return max(eval_list)
+            
+        if team == bot_team:
+            # min-max法に基づいて、bot自身の番なら最も評価が高いものを、そうでなければ低いものを選択。
+            return max(eval_list)
+        else:
+            return min(eval_list)
 
 class ManageBoard(object):
     """
