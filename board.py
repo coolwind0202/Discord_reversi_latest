@@ -13,6 +13,7 @@ class _Board(object):
     石情報は、必ずNoneかPlayerクラスを示す。
     
     このインスタンスは良手を走査する際にコピーされる。
+    このクラスのインスタンスをメインの処理で直接作成することはなく、基本的にManageBoardのインスタンスを作成することになる。
     """
     def __init__(self,**kwargs):
         self.board_data = {(n,i):None for n in range(8) for i in range(8)}
@@ -94,6 +95,18 @@ class _Board(object):
                 
         return grid_and_stones_dict
     
+    def stones_will_not_returned(self):
+        """
+        盤面の確定石数を返す。
+        """
+    
+    def eval_(self):
+        """
+        盤面を評価し評価値を返す。
+        """
+        pass
+        
+    
     @property
     def decision(self,depth,team,board):
         """
@@ -116,11 +129,12 @@ class _Board(object):
        
         """
         
-        pass
+        if (depth == 0) {
+            
         
         
 
-class ManageBoard(_Board):
+class ManageBoard(object):
     """
     盤面コンテキスト。
     ここで定義するのは盤面と実際のゲーム、Discordとの関連付けである
