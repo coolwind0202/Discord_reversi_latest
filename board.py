@@ -108,7 +108,7 @@ class _Board(object):
         
     
     @property
-    def decision(self,depth,team,board):
+    def decision(self,depth,team):
         """
         この関数が呼び出されるのはbotの思考時。
         呼び出す際には、その時点の盤面(_Board インスタンス)を与える。
@@ -129,7 +129,9 @@ class _Board(object):
        
         """
         
-        if (depth == 0) {
+        if depth == 0:
+            return self.eval_()
+            
             
         
         
