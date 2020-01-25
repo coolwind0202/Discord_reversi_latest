@@ -10,6 +10,7 @@ class _Board(object):
     """
     素の盤面情報。
     インスタンスに[x,y]の添字でアクセスすることで石情報を取得できる。
+    石情報は、必ずNoneかPlayerクラスを示す。
     
     このインスタンスは良手を走査する際にコピーされる。
     """
@@ -24,9 +25,13 @@ class _Board(object):
         """
         (x,y) に石を置いた場合石を返せるか判定する。
         オセロにおいて石を返せる場合に石を置くことができる。逆にいえば石を返せないなら置けないとわかる。
+        既に何らかの石が置かれている場合は当然置くことができない。
         どの石が返るかの座標を示すタプルをさらにまとめたタプルを返す。もし戻り値がFalseなら置けない。
         """
         board = self.board_data
+        
+        if self[x, y] is not None:
+            return ()
         
         COURSES = ((0,1),(1,1),(1,0),(1,-1),(0,-1),(-1,-1),(-1,0),(-1,1)) # 走査する方向を定義
         confirmed_stones = [] # 返せることが確定した石の座標リスト。
@@ -53,31 +58,74 @@ class _Board(object):
                     # 参照した座標が敵の石なら、返せるかもしれない石のリストに追加。
                     may_back_stones_grid.append((x + i, y + i))
                     
-        return confirmed_stones
+        return tuple(confirmed_stones)
+    
+    def back_stones(self,team,stones):
+        """
+        与えられた石の座標のリストもしくはタプルから、該当する石を返す。
+        """
+        for stone in stones:
+            self[stone] = team
     
     def put(self,x,y,team):
         """
         盤面の特定インデックス [a][b] にチーム (team) の石を置く。
         先に返せる石があるかを問合せ、もしなければ定数「CANT_PUT_STONE」を、あれば石を置く処理のあと定数「DONE_PUT_STONE」を返す。
         """
-        back_stones = can_back_stones(x,y,team)
+        stones = can_back_stones(x,y,team) # 返せる石のタプル。
         
-        if not back_stones:
+        if not stones:
             return consts.CANT_PUT_STONE
         else:
-            self[x,y] = team
-            for stone in back_stones:
-                self[stone] = team
+            back_stones(team,((x, y),) + stones)
             return consts.DONE_PUT_STONE
     
     def can_put_grid_and_returns(self,team):
         """
-        現在の盤面において、キーが「チーム (team) が石を置ける場所」、値が「仮にその場所に置いたらどうなるか」を示す辞書を返す。
+        現在の盤面において、キーが「チーム (team) が石を置ける場所」、値が「仮にその場所に置いたら何が返るか」を示す辞書を返す。
+        """
+        grid_and_stones_dict = {}
+        
+        for key in self.board_data:
+            back_stones = can_back_stones(self.board_data[key])
+            
+            if back_stones:
+                grid_and_stones_dict[key] = back_stones
+                
+        return grid_and_stones_dict
+    
+    @property
+    def decision(self,depth,team,board):
+        """
+        この関数が呼び出されるのはbotの思考時。
+        呼び出す際には、その時点の盤面(_Board インスタンス)を与える。
+        
+        与えられた _Board インスタンス の can_put_grid_and_returns() メソッドを実行。
+        これの戻り値（置ける場所がキー、置いた結果が）に対して以下の処理を行う。
+        
+        1. board 引数をコピー。
+        2. コピーした board_2 に、戻り値を利用してputメソッドを実行。
+        3. その結果をdescisionメソッドに渡す。このときteam引数は反転し、depth引数は1引くこと。
+        4. depth引数が0になった、あるいは can_put_grid_and_returns() の戻り値が空になったら、
+           処理をやめてその盤面を評価関数に渡す。評価関数の戻り値を返す。
+        5. 戻り値が返ってきたら、それをリストに追加する。
+        6. リストの中でもっとも評価が良かったものを返す。
+           （min-max法に基づき、teamが敵の場合もっとも悪いものを返す。）
+        7. 最後まで処理が戻ってきたら、座標と評価結果を辞書に格納。
+        8. その中でもっとも評価が良かった座標を思考結果として返す。
+       
         """
         
         pass
+        
+        
 
 class ManageBoard(_Board):
+    """
+    盤面コンテキスト。
+    ここで定義するのは盤面と実際のゲーム、Discordとの関連付けである
+    一般的な処理は基本的に _Board クラスで定義しておく。
+    """
     
     """
     TODO
@@ -113,16 +161,4 @@ class ManageBoard(_Board):
         
     # 盤面コンテキストで行える操作を定義する。あるオブジェクトを盤面に変換する処理などはクラスメソッドとして定義。
     
-    def put(self,x,y,team):
-        """
-        盤面の特定インデックス [a][b] にチーム (team) の石を置く。
-        """
-        
-        self.board.put(x,y,team)
     
-    def can_put_grid_and_returns(self,team):
-        """
-        現在の盤面において、キーが「チーム (team) が石を置ける場所」、値が「仮にその場所に置いたらどうなるか」を示す辞書を返す。
-        """
-        
-        pass
