@@ -6,6 +6,7 @@ import copy
 
 # TODO:
 # 定数 CANT_PUT_STONE (-1) と DONE_PUT_STONE の追加
+# プレイヤーを示す定数の追加 （マジックナンバーを回避）
 
 class _Board(object):
     """
@@ -17,7 +18,8 @@ class _Board(object):
     このクラスのインスタンスをメインの処理で直接作成することはなく、基本的にManageBoardのインスタンスを作成することになる。
     """
     def __init__(self,**kwargs):
-        self.board_data = {(n,i):None for n in range(8) for i in range(8)}
+        self.size = kwargs.get("size",8)
+        self.board_data = {(n,i):None for n in range(self.size) for i in range(self.size)}
         
     def __getitem__(self,x,y):
         # _board[x,y]で直接石情報にアクセスできるようにする。
@@ -40,12 +42,12 @@ class _Board(object):
         
         for COURSE in COURSES:
             may_back_stones_grid = [] # もしかすると返せるかもしれない、自石が発見された時点で返せることが確定する石のリスト。
-            for i in range(8):
+            for i in range(self.size):
                 a, b = COURSE
                 
-                if 0 > a * i or a * i > 7:
+                if 0 > a * i or a * i > self.size - 1:
                     break
-                elif 0 > b * i or b * i > 7:
+                elif 0 > b * i or b * i > self.size - 1:
                     break
                     
                 if self[x + i, y + i] is None:
@@ -104,7 +106,8 @@ class _Board(object):
         4隅について、その石が自分の石なら各方向に対し走査する。自分の石だったら石数に追加。そうでなければ走査打ち切り。
         """
         
-        FOUR_CORNER_AND_COURSES = {(0,0): ((0,1),(1,0)), (7,0): ((-1,0),(0,-1)), (0,7): ((0,-1),(1,0)), (7,7): ((0,-1),(-1,0))}
+        FOUR_CORNER_AND_COURSES = {(0,0): ((0,1),(1,0)), (self.size - 1, 0): ((-1,0),(0,-1)), 
+                                   (0,self.size - 1): ((0,-1),(1,0)), (self.size - 1, self.size - 1): ((0,-1),(-1,0))}
         
         stone_count = 0 # 確定石カウント
         
@@ -113,7 +116,7 @@ class _Board(object):
                 # 確定石なので、更に走査する
                 stone_count += 1
                 
-                for i in range(8):
+                for i in range(self.size):
                     a = FOUR_CORNER_AND_COURSES[0]
                     b = FOUR_CORNER_AND_COURSES[1]
                     
@@ -152,7 +155,8 @@ class _Board(object):
             
             for grid in tmp:
                 self_copy = copy.deepcopy(self)
-                eval_dict[tmp] = selp_copy.decision(depth - 1, not team)
+                self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
+                eval_dict[tmp] = selp_copy.decision(depth - 1, not team) # シミュレートした盤面のdecisionメソッドを呼び出して追加
                 
             sorted_tuple = sorted(eval_dict.items(), lambda items: items[1] * -1)
             return sorted_tuple[0][0]
@@ -161,7 +165,8 @@ class _Board(object):
         
         for grid in tmp:
             self_copy = copy.deepcopy(self)
-            eval_list.append(self_copy.decision(depth - 1,not team))
+            self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
+            eval_list.append(self_copy.decision(depth - 1,not team)) # シミュレートした盤面のdecisionメソッドを呼び出して追加
             
         if team == bot_team:
             # min-max法に基づいて、bot自身の番なら最も評価が高いものを、そうでなければ低いものを選択。
