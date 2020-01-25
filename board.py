@@ -1,4 +1,5 @@
 import datetime
+import copy
 # 盤面コンテキストを定義するファイル。
 # 盤面コンテキストには盤面情報、前回の盤面情報、、チャンネルID、サーバーID、
 # 対局者1、対局者2、棋譜、パスしたか、手数、置ける位置、対局開始時刻が含まれる。
@@ -131,10 +132,19 @@ class _Board(object):
         
         if depth == 0:
             return self.eval_()
-            
-            
         
+        tmp = self.can_put_grid_and_returns(team)
         
+        if not tmp:
+            return self.eval_()
+        
+        eval_list = []
+        
+        for grid in tmp:
+            self_copy = copy.deepcopy(self)
+            eval_list.append(self_copy.decision(depth - 1,not team))
+        
+        return max(eval_list)
 
 class ManageBoard(object):
     """
