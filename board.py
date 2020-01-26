@@ -245,7 +245,7 @@ class _Board(object):
             
         return win_count
         
-    def decision(self,base_depth,bot_team,depth,team):
+    def decision(self,base_depth,bot_team,depth,team,alpha,beta):
         """
         botの思考に必要なメソッド。
         
@@ -258,6 +258,12 @@ class _Board(object):
         bot_tean   : 初回の呼び出し時に設定する。botの team 。
         depth      : 探索深さ。最終的にこれが0（葉）になったら評価関数を実行。
         team       : 現在走査中の team 。毎回反転する。
+        alpha      : α-β法に基づき、現時点でのその枝の負の限界値を与える。
+        beta       : α-β法に基づき、現時点でのその枝の正の限界値を与える。
+        
+        TODO:
+        α-β法に基づく枝刈りの実装
+        
         """
         
         if depth == 0:
@@ -279,6 +285,8 @@ class _Board(object):
                 eval_dict[tmp] = self_copy.decision(base_depth, bot_team, 
                                                     depth - 1, not team) # シミュレートした盤面のdecisionメソッドを呼び出して追加
                 
+                # ここで枝刈り？
+                
             sorted_tuple = sorted(eval_dict.items(), lambda items: items[1] * -1)
             return sorted_tuple[0][0]
                 
@@ -287,7 +295,12 @@ class _Board(object):
         for grid in tmp:
             self_copy = copy.deepcopy(self)
             self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
-            eval_list.append(self_copy.decision(depth - 1,not team)) # シミュレートした盤面のdecisionメソッドを呼び出して追加
+            score = self_copy.decision(depth - 1,not team) # 葉から返ってきたもっとも適切な評価値
+            
+            # ここで枝刈り？
+            
+            
+            eval_list.append() # シミュレートした盤面のdecisionメソッドを呼び出して追加
             
         if team == bot_team:
             # min-max法に基づいて、bot自身の番なら最も評価が高いものを、そうでなければ低いものを選択。
