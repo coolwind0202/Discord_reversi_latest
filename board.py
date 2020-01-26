@@ -6,7 +6,7 @@ import copy
 
 # TODO:
 # 定数 CANT_PUT_STONE (-1) と DONE_PUT_STONE の追加
-# プレイヤーを示す定数の追加 （マジックナンバーを回避）
+# LEADER ENEMY BOT_WIN BOT_LOSE NOT_ENDED ENDED定数の追加 （マジックナンバーを回避）
 
 class _Board(object):
     """
@@ -24,6 +24,51 @@ class _Board(object):
     def __getitem__(self,x,y):
         # _board[x,y]で直接石情報にアクセスできるようにする。
         return self.board_data[(x,y)]
+    
+    @property
+    def stones_num(self):
+        """
+        盤面上における （leaderの石数, enemyの石数） をタプルで返す。
+        """
+        leader_stones = 0
+        enemy_stones = 0
+        
+        for i in range(self.size):
+            for n in range(self.size):
+                if self[i,n] == consts.LEADER:
+                    leader_stones += 1
+                elif self[i,n] == consts.ENEMY:
+                    enemy_stones += 1
+    
+    @property
+    def is_end(self):
+        """
+        対局が終了しているかを返す。
+        どちらも石を置くことができない場合、その対局は終了している。
+        """
+        leader_can_put_grid = self.can_put_grid_and_returns(consts.LEADER)
+        enemy_can_put_grid = self.can_put_grid_and_returns(consts.ENEMY)
+        
+        if leader_can_put_grid or enemy_can_put_grid:
+            # まだ対局は終わっていない
+            return consts.NOT_ENDED
+        else:
+            # どちらも置けないので、定数 ENDED を返す
+            return consts.ENDED
+        
+    def bot_won(self,bot_team):
+        """
+        botが勝利したかを返す。
+        """
+        
+        bot_stones = self.stones_num[bot_team]
+        enemy_stones = self.stones_num[not bot_team]
+            
+        if bot_stones > enemy_stones:
+            return consts.BOT_WIN
+        else:
+            return consts.BOT_LOSE
+        
     
     def can_back_stones(self,x,y,team):
         """
@@ -100,7 +145,9 @@ class _Board(object):
     
     def stones_will_not_returned(self,bot_team):
         """
-        盤面の確定石数を返す。
+        botの思考に必要なメソッド。
+        
+        盤面における （botの確定石, 敵の確定石）のタプルを返す。
         ただし、正確な確定石数ではなく、端のみに着目したものである。
         4隅をタプルとして定義する。
         4隅について、その石が自分の石なら各方向に対し走査する。自分の石だったら石数に追加。そうでなければ走査打ち切り。
@@ -108,37 +155,109 @@ class _Board(object):
         
         FOUR_CORNER_AND_COURSES = {(0,0): ((0,1),(1,0)), (self.size - 1, 0): ((-1,0),(0,-1)), 
                                    (0,self.size - 1): ((0,-1),(1,0)), (self.size - 1, self.size - 1): ((0,-1),(-1,0))}
+        # 4隅の座標と、走査すべき方向を定義
         
-        stone_count = 0 # 確定石カウント
+        bot_stone_count = 0 # botの確定石カウント
+        enemy_stone_count = 1 # botの確定石カウント
         
         for CORNER in FOUR_CORNER_AND_COURSES:
             if self[CORNER] == bot_team:
-                # 確定石なので、更に走査する
-                stone_count += 1
+                # その隅がbotの確定石なので、更に走査する
+                bot_stone_count += 1
                 
-                for i in range(self.size):
-                    a = FOUR_CORNER_AND_COURSES[0]
-                    b = FOUR_CORNER_AND_COURSES[1]
+                for COURSE in FOUR_CORNER_AND_COURSES[CORNER]:
+                    # その隅から各方向に対して走査。
+                    # COURSE[0] は現在走査している方向のx、CORNER[0] は現在走査している四隅の座標のx
                     
-                    a_grid = (CORNER[0] + a[0] * i, CORNER[1] + a[1] * i)
-                    b_grid = (CORNER[0] + b[0] * i, CORNER[1] + b[1] * i)
+                    for i in range(self.size):
+                        grid = ((COURSE[0] * i + CORNER[0]),(COURSE[1] * i + CORNER[1]))
+                        
+                        if self[grid] == bot_team:
+                            bot_stone_count += 1
+                        else:
+                            break
+            elif self[CORNER] == not bot_team:
+                # その隅が敵の確定石なので、更に走査する
+                enemy_stone_count += 1
+                
+                for COURSE in FOUR_CORNER_AND_COURSES[CORNER]:
+                    # その隅から各方向に対して走査。
+                    # COURSE[0] は現在走査している方向のx、CORNER[0] は現在走査している四隅の座標のx
                     
-                    if self[a_grid] == bot_team:
-                        stone_count += 1
-                    elif self[b_grid] == bot_team:
-                        stone_count += 1
-                    else:
-                        break        
+                    for i in range(self.size):
+                        grid = ((COURSE[0] * i + CORNER[0]),(COURSE[1] * i + CORNER[1]))
+                        
+                        if self[grid] == not bot_team:
+                            enemy_stone_count += 1
+                        else:
+                            break
     
     def eval_(self):
         """
+        botの思考に必要なメソッド。
+        
         盤面を評価し評価値を返す。
+        評価値に必要なのは、盤面の評価値、候補数、そして確定石数。
         """
         pass
+    
+    
+    
+    def final_decision(self,base_depth,bot_team,depth,team):
+        """
+        botの思考に必要なメソッド。
+        
+        最終局面を残り6手と定義したとき、対局が最終局面に達したときに呼び出されるのがこのメソッドである。
+        通常の eval_ メソッドと比べ、このメソッドが全探索することにかわりはないが、
+        残りの手数に応じて終局まで読むのがこのメソッドである。各葉は枝に対しbotが勝利したかを通知する。
+        枝はそれを受け取ると、根の方へ勝利した局面数を返す。さらに根に近い枝は受け取った局面数を合計し返す。
+        根は、局面数と次の手の座標を辞書に追加し、最初の呼びだし元に最も局面数が多かった座標を返す。
+        """
+        
+        if depth == 0:
+            # 葉まで到達したので、botが勝利したかを取得（パスの発生などにより完全な勝利ではない場合を考えない）。
+            return self.bot_won(bot_team)
+            
+        tmp = self.can_put_grid_and_returns(team)
+        if not tmp:
+            # もし打てるところがなければすぐに勝利しているか返す。
+            return self.bot_won(bot_team)
+        
+        if base_depth == depth:
+            # 初回の呼び出しでの処理。
+            
+            win_dict = {}
+            
+            for grid in tmp:
+                self_copy = copy.deepcopy(self)
+                self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
+                win_dict[grid] = self_copy.final_decision(depth - 1,not team)) # 次の手の座標と合計勝利局面数を追加
+                
+            sorted_tuple = sorted(win_dict.items(), lambda items: items[1] * -1) # 勝利数でソートして
+            return sorted_tuple[0][0] # 最も合計勝利局面数が多かった座標を返す
+            
+        win_count = 0
+        
+        for grid in tmp:
+            self_copy = copy.deepcopy(self)
+            self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
+            win_count += self_copy.final_decision(depth - 1,not team)) # シミュレートした盤面のfinal_decisionメソッドを呼び出して追加
+            
+        return win_count
         
     def decision(self,base_depth,bot_team,depth,team):
         """
-        この関数が呼び出されるのはbotの思考時。       
+        botの思考に必要なメソッド。
+        
+        この関数が呼び出されるのはbotの思考時。
+        eval_() メソッドを使用して、深さ depth （depth手先）まで潜ったら、その評価値を返す。
+        枝は返された評価値をリストに追加して、最も評価値が適切なものを返す。
+        根は返された評価値と次の手の座標を辞書に追加し、最初の呼び出し元に最も評価が適切だった座標を返す。
+        
+        base_depth : 初回の呼び出し時に設定する。元の深さ。
+        bot_tean   : 初回の呼び出し時に設定する。botの team 。
+        depth      : 探索深さ。最終的にこれが0（葉）になったら評価関数を実行。
+        team       : 現在走査中の team 。毎回反転する。
         """
         
         if depth == 0:
@@ -146,17 +265,19 @@ class _Board(object):
         
         tmp = self.can_put_grid_and_returns(team)
         if not tmp:
+            # もし打てるところがなければすぐに評価を返す。
             return self.eval_()
         
         if base_depth == depth:
             # 初回の呼び出しでの処理。
             
-            eval_dict = [] # 最初の呼び出しでは座標を保存しておくため。
+            eval_dict = {} # 最初の呼び出しでは座標を保存しておくため。
             
             for grid in tmp:
                 self_copy = copy.deepcopy(self)
                 self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
-                eval_dict[tmp] = selp_copy.decision(depth - 1, not team) # シミュレートした盤面のdecisionメソッドを呼び出して追加
+                eval_dict[tmp] = self_copy.decision(base_depth, bot_team, 
+                                                    depth - 1, not team) # シミュレートした盤面のdecisionメソッドを呼び出して追加
                 
             sorted_tuple = sorted(eval_dict.items(), lambda items: items[1] * -1)
             return sorted_tuple[0][0]
