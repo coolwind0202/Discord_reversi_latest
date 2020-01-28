@@ -1,4 +1,5 @@
 import datetime
+import math
 import copy
 # 盤面コンテキストを定義するファイル。
 # 盤面コンテキストには盤面情報、前回の盤面情報、、チャンネルID、サーバーID、
@@ -244,6 +245,46 @@ class _Board(object):
             win_count += self_copy.final_decision(depth - 1,not team)) # シミュレートした盤面のfinal_decisionメソッドを呼び出して追加
             
         return win_count
+    
+    def decision(self,dbase_epth,bot_team):
+        """
+        botの思考を行う。このメソッドは初回の思考時に実行され、alpha_betaメソッドを呼び出し結果を返す。
+        
+        base_depth は探索の深さ。
+        bot_team はbotのチーム。
+        """
+        
+        grids = self.can_put_grid_and_returns(bot_team) #置ける位置と、返される石
+        eval_dict = {}
+        
+        for grid in grids:
+            self_copy = copy.copy(self) # 自身をコピー
+            self_copy.back_stones(bot_team, ((grid[0], grid[1]),) + grids[grid]) # 走査中の手で返す
+            
+            inf = float("inf")
+            eval_dict[grid] = self_copy.alpha_beta(base_depth - 1, bot_team, -inf, inf) # alpha_betaに渡す
+            
+        max_eval = sorted(eval_dict.items(), reverse=True, key=lambda items:items[1])[0] # (座標,評価) のタプル
+        return max_eval[0]
+    
+    def alpha_beta(self,depth,team,alpha,beta):
+        """
+        2手目以降を探索する。
+        alpha は下限値、beta は上限値で、返った評価値がこの範囲から外れた枝はそれ以上探索しない。
+        """
+        
+        if depth == 0:
+            return self.eval_()
+        
+        grids = self.can_put_grid_and_returns(team)
+        eval_list = [] # 2手目以降は評価のみが重要なので、座標は不要
+        
+        for grid in grids:
+            self_copy = copy.copy(self)
+            self_copy.back_stones(bot_team, ((grid[0], grid[1]),) + grids[grid]) # 走査中の手で返す
+            
+            eval_list.append(alpha_beta(depth - 1, not team, alpha, beta))
+    
         
     def decision(self,base_depth,bot_team,depth,team,alpha,beta):
         """
