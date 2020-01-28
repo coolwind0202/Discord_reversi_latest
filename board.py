@@ -144,7 +144,7 @@ class _Board(object):
                 
         return grid_and_stones_dict
     
-    def stones_will_not_returned(self,bot_team):
+    def stones_will_not_return(self,bot_team):
         """
         botの思考に必要なメソッド。
         
@@ -202,8 +202,6 @@ class _Board(object):
         """
         pass
     
-    
-    
     def final_decision(self,base_depth,bot_team,depth,team):
         """
         botの思考に必要なメソッド。
@@ -246,7 +244,7 @@ class _Board(object):
             
         return win_count
     
-    def decision(self,dbase_epth,bot_team):
+    def decision(self,base_depth,bot_team):
         """
         botの思考を行う。このメソッドは初回の思考時に実行され、alpha_betaメソッドを呼び出し結果を返す。
         
@@ -262,93 +260,47 @@ class _Board(object):
             self_copy.back_stones(bot_team, ((grid[0], grid[1]),) + grids[grid]) # 走査中の手で返す
             
             inf = float("inf")
-            eval_dict[grid] = self_copy.alpha_beta(base_depth - 1, bot_team, -inf, inf) # alpha_betaに渡す
+            eval_dict[grid] = self_copy.alpha_beta(base_depth - 1, bot_team, bot_team, -inf, inf) # alpha_betaに渡す
             
         max_eval = sorted(eval_dict.items(), reverse=True, key=lambda items:items[1])[0] # (座標,評価) のタプル
         return max_eval[0]
     
-    def alpha_beta(self,depth,team,alpha,beta):
+    def alpha_beta(self,depth,bot_team,team,alpha,beta):
         """
         2手目以降を探索する。
         alpha は下限値、beta は上限値で、返った評価値がこの範囲から外れた枝はそれ以上探索しない。
+        
+        参考: http://aidiary.hatenablog.com/entry/20050205/1274150331
         """
         
         if depth == 0:
             return self.eval_()
         
         grids = self.can_put_grid_and_returns(team)
-        eval_list = [] # 2手目以降は評価のみが重要なので、座標は不要
+        eval_list = [] # 評価値のリスト。2手目以降は評価のみが重要なので、座標は不要
         
         for grid in grids:
             self_copy = copy.copy(self)
-            self_copy.back_stones(bot_team, ((grid[0], grid[1]),) + grids[grid]) # 走査中の手で返す
+            self_copy.back_stones(team, ((grid[0], grid[1]),) + grids[grid]) # 走査中の手で返す
             
-            eval_list.append(alpha_beta(depth - 1, not team, alpha, beta))
-    
-        
-    def decision(self,base_depth,bot_team,depth,team,alpha,beta):
-        """
-        botの思考に必要なメソッド。
-        
-        この関数が呼び出されるのはbotの思考時。
-        eval_() メソッドを使用して、深さ depth （depth手先）まで潜ったら、その評価値を返す。
-        枝は返された評価値をリストに追加して、最も評価値が適切なものを返す。
-        根は返された評価値と次の手の座標を辞書に追加し、最初の呼び出し元に最も評価が適切だった座標を返す。
-        
-        base_depth : 初回の呼び出し時に設定する。元の深さ。
-        bot_tean   : 初回の呼び出し時に設定する。botの team 。
-        depth      : 探索深さ。最終的にこれが0（葉）になったら評価関数を実行。
-        team       : 現在走査中の team 。毎回反転する。
-        alpha      : α-β法に基づき、現時点でのその枝の負の限界値を与える。
-        beta       : α-β法に基づき、現時点でのその枝の正の限界値を与える。
-        
-        TODO:
-        α-β法に基づく枝刈りの実装
-        
-        """
-        
-        if depth == 0:
-            return self.eval_()
-        
-        tmp = self.can_put_grid_and_returns(team)
-        if not tmp:
-            # もし打てるところがなければすぐに評価を返す。
-            return self.eval_()
-        
-        if base_depth == depth:
-            # 初回の呼び出しでの処理。
+            copy_eval = alpha_beta(depth - 1, not team, alpha, beta) # 子ノードの評価値
+            eval_list.append(copy_eval)
             
-            eval_dict = {} # 最初の呼び出しでは座標を保存しておくため。
-            
-            for grid in tmp:
-                self_copy = copy.deepcopy(self)
-                self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
-                eval_dict[tmp] = self_copy.decision(base_depth, bot_team, 
-                                                    depth - 1, not team) # シミュレートした盤面のdecisionメソッドを呼び出して追加
+            if team == bot_team:
+                # BOTの手番はMAXノード、評価が最大のものを選択
+                max_eval = max(eval_list) # 現時点の最大の評価値
+                alpha = max_eval
                 
-                # ここで枝刈り？
+                if max_eval > beta:
+                    return max_eval
+            else:
+                # 人間の手番はMINノード、評価が最小のものを選択
+                min_eval = min(eval_list)
+                beta = min_eval
                 
-            sorted_tuple = sorted(eval_dict.items(), lambda items: items[1] * -1)
-            return sorted_tuple[0][0]
-                
-        eval_list = []
+                if min_eval < alpha:
+                    return min_eval
         
-        for grid in tmp:
-            self_copy = copy.deepcopy(self)
-            self_copy.back_stones(team,((grid[0], grid[1]),) + tmp[grid]) # 石を返した場合をシミュレート
-            score = self_copy.decision(depth - 1,not team) # 葉から返ってきたもっとも適切な評価値
-            
-            # ここで枝刈り？
-            
-            
-            eval_list.append() # シミュレートした盤面のdecisionメソッドを呼び出して追加
-            
-        if team == bot_team:
-            # min-max法に基づいて、bot自身の番なら最も評価が高いものを、そうでなければ低いものを選択。
-            return max(eval_list)
-        else:
-            return min(eval_list)
-
 class ManageBoard(object):
     """
     盤面コンテキスト。
