@@ -200,7 +200,10 @@ class _Board(object):
         盤面を評価し評価値を返す。
         評価値に必要なのは、盤面の評価値、候補数、そして確定石数。
         """
-        pass
+        
+        # 盤面の評価に必要な評価値テーブルをハードコーディング
+        point_table = {(0,0):100, (1,0):-40, (2,0):20, (3,0):5, (4,0):5, (5,0):20, (6,0):-40, (7,0):100,
+                       (0,1):-40, (1,1):-80, (2,1):-1, (3,1):-1,}
     
     def final_decision(self,base_depth,bot_team,depth,team):
         """
@@ -274,6 +277,7 @@ class _Board(object):
         """
         
         if depth == 0:
+            # 葉まで到達したので、評価値を取得
             return self.eval_()
         
         grids = self.can_put_grid_and_returns(team)
