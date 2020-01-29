@@ -1,6 +1,7 @@
 import datetime
 import math
 import copy
+import random
 # 盤面コンテキストを定義するファイル。
 # 盤面コンテキストには盤面情報、前回の盤面情報、、チャンネルID、サーバーID、
 # 対局者1、対局者2、棋譜、パスしたか、手数、置ける位置、対局開始時刻が含まれる。
@@ -144,7 +145,7 @@ class _Board(object):
                 
         return grid_and_stones_dict
     
-    def stones_will_not_return(self,bot_team):
+    def stones_will_not_returned(self,bot_team):
         """
         botの思考に必要なメソッド。
         
@@ -193,17 +194,48 @@ class _Board(object):
                         else:
                             break
     
-    def eval_(self):
+    def eval_(self,bot_team):
         """
         botの思考に必要なメソッド。
         
         盤面を評価し評価値を返す。
         評価値に必要なのは、盤面の評価値、候補数、そして確定石数。
+        
+        参考: https://www.info.kindai.ac.jp/~takasi-i/thesis/2012_09-1-037-0133_S_Shiota_thesis.pdf
         """
+        
+        rnd = random.uniform((0.01,1.00))
+        board_point = 0 # 盤面の石の位置のみを考慮した評価。
         
         # 盤面の評価に必要な評価値テーブルをハードコーディング
         point_table = {(0,0):100, (1,0):-40, (2,0):20, (3,0):5, (4,0):5, (5,0):20, (6,0):-40, (7,0):100,
-                       (0,1):-40, (1,1):-80, (2,1):-1, (3,1):-1,}
+                       (0,1):-40, (1,1):-80, (2,1):-1, (3,1):-1, (4,1):-1, (5,0):-1, (6,0):-80, (7,0):-40,
+                       (0,2):20, (1,2):-1, (2,2):5, (3,2):1, (4,2):1, (5,2):5, (6,2):-1, (7,2):20,
+                       (0,3):5, (1,3):-1, (2,3):1, (3,3):0, (4,3):0, (5,3):1, (6,3):-1, (7,3):5,
+                       (0,4):5, (1,4):-1, (2,4):1, (3,4):0, (4,4):0, (5,4):1, (6,4):-1, (7,4):5,
+                       (0,5):20, (1,5):-1, (2,5):5, (3,5):1, (4,5):1, (5,5):5, (6,5):-1, (7,5):20,
+                       (0,6):-40, (1,6):-80, (2,6):-1, (3,6):-1, (4,6):-1, (5,6):-1, (6,6):-80, (7,6):-40,
+                       (0,7):100, (1,7):-40, (2,7):20, (3,7):5, (4,7):5, (5,7):20, (6,7):-40, (7,7):100,
+                      }
+        
+        for grid in self.board_data:
+            tmp = point_table[grid]
+            
+            if tmp == bot_team:
+                # もし、そのマスがbotの石なら盤面評価を1加算
+                board_point += 1
+            elif tmp == not bot_team:
+                # もし、敵の石なら1減算
+                board_point -= 1
+            
+        bot_possible_stones = len(self.can_put_grid_returns(bot_team)) # botの着手可能数
+        bot_confirms, enemy_confirms  = self.will_not_returned(bot_team) # botと相手のそれぞれの確定石数
+        
+        BP = board_point * rnd * 3 * 2
+        FS = ((bot_confirms - enemy_confirms) + rnd * 3) * 11
+        CN = (bot_possible_stones + rnd * 2) * 10
+        
+        return BP * 2 + FS * 5 + CN
     
     def final_decision(self,base_depth,bot_team,depth,team):
         """
