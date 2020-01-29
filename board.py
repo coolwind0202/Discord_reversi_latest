@@ -8,7 +8,7 @@ import random
 
 # TODO:
 # 定数 CANT_PUT_STONE (-1) と DONE_PUT_STONE の追加
-# LEADER ENEMY BOT_WIN BOT_LOSE NOT_ENDED ENDED定数の追加 （マジックナンバーを回避）
+# LEADER ENEMY BOT_WIN BOT_LOSE NOT_ENDED ENDED BOT_ID定数の追加 （マジックナンバーを回避）
 
 class _Board(object):
     """
@@ -371,11 +371,56 @@ class ManageBoard(object):
         self.enemy_id = kwargs.get("enemy_id",0)
         
         self.players_id = [leader_id, enemy_id]
+        self.number_of_player = 0
+        self.now_player_id = players_id[number_of_player]
         self.kifus = ""
         self.pass_flag = False 
         self.turn_num = 0
         self.start_time = datetime.datetime.now()
         
-    # 盤面コンテキストで行える操作を定義する。あるオブジェクトを盤面に変換する処理などはクラスメソッドとして定義。
+    # 盤面コンテキストで行える操作を定義する。あるオブジェクトを盤面に変換する処理などはスタティックメソッドとして定義。
     
-    
+    def put(self,x,y,team):
+        """
+        座標(x,y) に team の石を配置する。
+        """
+        
+        put_return_value = self.board.put(x,y,team)
+        
+        if put_return_value == consts.CANT_PUT_STONE:
+            # 他に置き場所があるのに、置かなかった
+            return consts.CANT_PUT_STONE
+        
+        self.kifus += f"{chr(ord('A')) + x}{y}" # 棋譜に記録
+        self.turn_num += 1 # ターン数
+        
+        self.number_of_player = not self.number_of_player
+        self.now_player_id = self.players_id[self.number_of_player] # 現在の番のID
+        
+        while True:
+            tmp = self.board.can_put_grid_and_returns(self.number_of_player) # 配置可能かチェックする
+            
+            if tmp:
+                # どこかに配置できるのでループを終了
+                self.pass_flag = False
+                break
+            if not (tmp or pass_flag):
+                # 配置できず、かつ直前にパスが行われていないなら、ループを続行
+                self.pass_flag = True
+                
+                self.number_of_player = not self.number_of_player
+                self.now_player_id = self.players_id[self.number_of_player] # 現在の番のID
+                continue
+             else:
+                # 配置できず、かつ直前にパスが行われているなら、対局を終了しなければならない
+                return consts.ENDED
+            
+            check_team = not check_team # もう1方のチームについても調べるため、変数を反転
+        
+        if now_player_id == consts.BOT_ID:
+            # botが置く番なので、botが置く処理
+            
+            grid = self.board.decision(base_depth=3, bot_team=self.number_of_player)
+            bot_put_return_value = self.put(grid[0], grid[1], self.number_of_player)
+            
+            # TODO:botの置く処理の完成
