@@ -422,5 +422,30 @@ class ManageBoard(object):
             
             grid = self.board.decision(base_depth=3, bot_team=self.number_of_player)
             bot_put_return_value = self.put(grid[0], grid[1], self.number_of_player)
-            
-            # TODO:botの置く処理の完成
+
+    def display_image():
+        """
+        盤面を画像に変換する。
+        """
+        
+    def display_text():
+        """
+        盤面をテキストに変換する。
+        """
+        
+    def convert_number():
+        """
+        盤面を、自石:1 敵石:0 なし 2 として1桁ずつ数値を割り当てた3進数の数値を、10進数に変換して返す。
+        """
+        
+    @staticmethod
+    def create_board_with_record():
+        """
+        データベースの一時情報から盤面を生成する。
+        """
+        
+    @staticmethod
+    def create_board_with_image():
+        """
+        画像情報から盤面を生成する。
+        """
