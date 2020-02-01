@@ -2,6 +2,11 @@ import datetime
 import math
 import copy
 import random
+import io
+
+from PIL import Image,ImageDraw
+import numpy as np
+
 # 盤面コンテキストを定義するファイル。
 # 盤面コンテキストには盤面情報、前回の盤面情報、、チャンネルID、サーバーID、
 # 対局者1、対局者2、棋譜、パスしたか、手数、置ける位置、対局開始時刻が含まれる。
@@ -423,29 +428,76 @@ class ManageBoard(object):
             grid = self.board.decision(base_depth=3, bot_team=self.number_of_player)
             bot_put_return_value = self.put(grid[0], grid[1], self.number_of_player)
 
-    def display_image():
+    def display_image(self):
         """
         盤面を画像に変換する。
+        戻り値は Bytes オブジェクト。
         """
+        if size == 8:
+            base = Image.open('reversi.jpg')
+        else:
+            base = Image.open('reversi_6.jpg')
+        draw = ImageDraw.Draw(base)
+
+        for i in range(size):
+            for n in range(size):
+                start_x = 40 + n * 45 + n * 13 # 描画の開始座標 X
+                start_y = 39 + i * 45 + i * 13 # 描画の開始座標 Y
+                stone_radius = 45 # 円の半径
+                
+                if board[i][n] == 1:
+                    color_flag = 0 # 石の色を決定するフラグ
+                elif board[i][n] == 0:
+                    color_flag = 1
+                else:
+                    # 石がないので、描画しない
+                    continue
+                
+                fill_color = tuple(255 * color_flag for _ in range(3))
+                line_color = (0,0,0)
+    
+                draw.ellipse((start_x,start_y,start_x+stone_radius,start_y+stone_radius),
+                         fill=fill_color, outline=line_color)
+        
+        bytes_to_save = io.BytesIO()
+        draw.save(bytes_to_save, "JPG") # メモリ上に一時的に保存
+        
+        return bytes_to_save.get_value()
         
     def display_text():
         """
         盤面をテキストに変換する。
         """
         
-    def convert_number():
+        pass
+        
+    def convert_to_number(self):
         """
-        盤面を、自石:1 敵石:0 なし 2 として1桁ずつ数値を割り当てた3進数の数値を、10進数に変換して返す。
+        盤面を、自石を1、それ以外を0とした2進数の数値を、10進数に変換して返す。
         """
+        
+        stone_list = [self[i,n] for i in range(self.size) for n in range(self.size)] # 辞書を一次元のリストに変換
+        
+        list_leader = ["1" if num == 1 else "0" for num in l] # 自石に該当する部分に1、それ以外に0が格納されたリスト
+        list_enemy = ["1" if num == 0 else "0" for num in l]
+        
+        num_leader = int("".join(list_leader), 2) # 2進数の文字列として変換
+        num_enemy = int("".join(list_enemy), 2)
+        
+        return num_leader, num_enemy
         
     @staticmethod
     def create_board_with_record():
         """
-        データベースの一時情報から盤面を生成する。
+        10進数の文字列として保存されている、データベースの盤面の数値から盤面を生成する。
         """
+        
+        pass
         
     @staticmethod
     def create_board_with_image():
         """
         画像情報から盤面を生成する。
         """
+
+        pass
