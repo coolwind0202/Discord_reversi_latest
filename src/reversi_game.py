@@ -1,10 +1,15 @@
-# ゲーム全般を管理するファイル
+# 基本的なゲームを管理するファイル
+# start、put、end、undo、infoの4つ
+#
+# TODO:
+# 盤面を検索して返す関数の作成 Botのメソッドとして実装
 import random
 
 import discord
 from discord.ext import commands
 
 import board
+import consts
 
 class GameCog(commands.Cog):
     def __init__(self,bot):
@@ -20,6 +25,14 @@ class GameCog(commands.Cog):
         Discord Reversi にリアクションの追加権限がある場合、どちらが先手になるか聞かれます。
         指示に従ってリアクションを追加してください。
         """
+        
+        for tmp in self.bot.in_progress_boards:
+            if ctx.author.id in tmp.players_id:
+                await ctx.send("既にあなたは他のプレイヤーと対局を開始しています。対局は `end` コマンドで終了できます。")
+            elif enemy.id in tmp.players_id and enemy != ctx.me:
+                await ctx.send("あなたが対局相手に指定したプレイヤーは他のプレイヤーと対局を行っているようです。"
+                               "対局は `end` コマンドで終了できます。")
+        
         if ctx.author == enemy:
             await ctx.send("自分自身と対局することはできません。")
             return
@@ -61,7 +74,34 @@ class GameCog(commands.Cog):
                 # もしランダムを指定されたら、シャッフル
                 random.shuffle(players)
                 
-        manage_board = board.ManageBoard(channel_id=ctx.channel.id,guild_id=ctx.guild.id,)
+        game_board = board.ManageBoard(channel_id=ctx.channel.id,guild_id=ctx.guild.id,
+                                         leader_id=players[0],enemy_id=players[1])
+        self.in_progress_boards.append(game_board)
+        await ctx.send(game_board.embed())
         
+    @commands.guild_only()
+    @commands.cooldown(1,3.0,type=commands.BucketType.user)
+    @commands.command()
+    async def put(self,ctx,x:int,y:int):
+        """
+        対局中の盤面の (x,y) 座標に石を配置します。
+        """
         
-    
+        if ctx.author.id != game_board.players_id:
+            await ctx.send("あなたの番ではありません。")
+            return
+        
+        put_return_value, can_put = game_board.put(x,y,game_board.number_of_player)
+        
+        if put_return_value == consts.CAN_PUT_BUT_NOT_SELECTED:
+            await ctx.send(f"({x},{y})には置けません。\n以下の座標に置くことができます：{','.join(can_put)}")
+        
+        await ctx.send(game_board.embed())
+        
+    @commands.guild_only()
+    @commands.cooldown(1,3.0,type=commands.BucketType.user)
+    @commands.command()
+    async def end(self,ctx):
+        """
+        """
+        pass
