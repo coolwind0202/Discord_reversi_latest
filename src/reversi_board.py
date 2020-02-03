@@ -394,11 +394,11 @@ class ManageBoard(object):
         座標(x,y) に team の石を配置する。
         """
         
-        put_return_value, stones = self.board.put(x,y,team)
+        put_return_value, can_put = self.board.put(x,y,team)
         
         if put_return_value == consts.CAN_PUT_BUT_NOT_SELECTED:
             # 他に置き場所があるのに、置かなかった
-            return consts.CAN_PUT_BUT_NOT_SELECTED
+            return consts.CAN_PUT_BUT_NOT_SELECTED,  can_put
         
         self.kifus += f"{chr(ord('A')) + x}{y}" # 棋譜に記録
         self.turn_num += 1 # ターン数
@@ -422,7 +422,7 @@ class ManageBoard(object):
                 continue
              else:
                 # 配置できず、かつ直前にパスが行われているなら、対局を終了しなければならない
-                return consts.ENDED
+                return consts.ENDED, ()
             
             check_team = not check_team # もう1方のチームについても調べるため、変数を反転
         
@@ -430,9 +430,9 @@ class ManageBoard(object):
             # botが置く番なので、botが置く処理
             
             grid = self.board.decision(base_depth=3, bot_team=self.number_of_player)
-            bot_put_return_value = self.put(grid[0], grid[1], self.number_of_player)
+            bot_put_return_value, can_put = self.put(grid[0], grid[1], self.number_of_player)
             
-        return consts.DONE_PUT_STONE
+        return consts.DONE_PUT_STONE, can_put
 
     def display_image(self):
         """
