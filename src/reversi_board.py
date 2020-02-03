@@ -133,10 +133,12 @@ class _Board(object):
         stones = can_back_stones(x,y,team) # 返せる石のタプル。
         
         if not stones:
-            return consts.CANT_PUT_STONE
+            return consts.CANT_PUT_STONE, ()
+        elif (x,y) not in stones:
+            return consts.CAN_PUT_BUT_NOT_SELECTED, can_back_stones
         else:
             back_stones(team,((x, y),) + stones)
-            return consts.DONE_PUT_STONE
+            return consts.DONE_PUT_STONE, can_back_stones
     
     def can_put_grid_and_returns(self,team):
         """
@@ -392,11 +394,11 @@ class ManageBoard(object):
         座標(x,y) に team の石を配置する。
         """
         
-        put_return_value = self.board.put(x,y,team)
+        put_return_value, stones = self.board.put(x,y,team)
         
-        if put_return_value == consts.CANT_PUT_STONE:
+        if put_return_value == consts.CAN_PUT_BUT_NOT_SELECTED:
             # 他に置き場所があるのに、置かなかった
-            return consts.CANT_PUT_STONE
+            return consts.CAN_PUT_BUT_NOT_SELECTED
         
         self.kifus += f"{chr(ord('A')) + x}{y}" # 棋譜に記録
         self.turn_num += 1 # ターン数
@@ -429,6 +431,8 @@ class ManageBoard(object):
             
             grid = self.board.decision(base_depth=3, bot_team=self.number_of_player)
             bot_put_return_value = self.put(grid[0], grid[1], self.number_of_player)
+            
+        return consts.DONE_PUT_STONE
 
     def display_image(self):
         """
