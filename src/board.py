@@ -7,6 +7,8 @@ import io
 from PIL import Image,ImageDraw
 import numpy as np
 
+import consts
+
 # 盤面コンテキストを定義するファイル。
 # 盤面コンテキストには盤面情報、前回の盤面情報、、チャンネルID、サーバーID、
 # 対局者1、対局者2、棋譜、パスしたか、手数、置ける位置、対局開始時刻が含まれる。
